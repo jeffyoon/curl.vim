@@ -92,6 +92,48 @@ function! s:make_command(url, setting) abort
   return command
 endfunction
 
+function! s:readfile(file) abort
+  return join(readfile(a:file, 'b'), "\n")
+endfunction
+
+function! s:read_header(headerfile) abort
+  let headerstr = s:readfile(a:settings._file.header)
+  let header_chunks = split(headerstr, "\r\n\r\n")
+  return split(get(header_chunks, -1, ''), "\r\n")
+endfunction
+
+function! s:make_response(setting) abort
+  let header = s:read_header(a:setting._file.header)
+  let content = s:readfile(a:setting._file.body)
+
+  for file in values(settings._file)
+    if filereadable(file)
+      call delete(file)
+    endif
+  endfor
+
+  let response = {
+        \   'header' : header,
+        \   'content': content,
+        \   'status': 0,
+        \   'statusText': '',
+        \   'success': 0,
+        \ }
+
+  if !empty(header)
+    let status_line = get(header, 0)
+    let matched = matchlist(status_line, '^HTTP/1\.\d\s\+\(\d\+\)\s\+\(.*\)')
+    if !empty(matched)
+      let [status, statusText] = matched[1 : 2]
+      let response.status = status - 0
+      let response.statusText = statusText
+      let response.success = status =~# '^2'
+      call remove(header, 0)
+    endif
+  endif
+  return response
+endfunction
+
 function! curl#get(url, ...) abort
   " TODO: implement
 endfunction
