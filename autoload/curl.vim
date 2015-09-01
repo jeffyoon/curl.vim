@@ -7,6 +7,7 @@ set cpo&vim
 
 let s:V = vital#of("vital")
 let s:Prelude = s:V.import("Prelude")
+let s:json = s:V.import("Web.JSON")
 
 function! s:tempname() abort
   return tr(tempname(),'\','/')
@@ -42,7 +43,7 @@ endfunction
 
 function! s:add_option(settings, opt, prefix) abort
   if has_key(a:settings, a:opt)
-    return " " . prefix . " " . a:settings[a:opt]
+    return " " . a:prefix . " " . a:settings[a:opt]
   endif
   return ""
 endfunction
@@ -75,7 +76,7 @@ function! s:make_command(url, settings) abort
   let command .= ' --output ' . s:quoted(a:settings._file.body)
   if has_key(a:settings, 'data')
     let a:settings._file.post = s:tempname()
-    call writefile(a:settings.data, a:settings._file.post, 'b')
+    call writefile([s:json.encode(a:settings.data), ], a:settings._file.post, 'b')
     let command .= ' --data-binary @' . s:quoted(a:settings._file.post)
   endif
   if has_key(a:settings, 'gzipDecompress') && a:settings.gzipDecompress
@@ -147,6 +148,9 @@ endfunction
 function! curl#request(url, settings)abort
   let command = s:make_command(a:url, a:settings)
   call vimproc#system(command)
+  if vimproc#get_last_status() != 0
+    throw 'curl.vim: curl command failed.'
+  endif
   return s:make_response(a:settings)
 endfunction
 
