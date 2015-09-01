@@ -5,6 +5,9 @@
 let s:save_cpo = &cpo
 set cpo&vim
 
+let s:V = vital#of("vital")
+let s:Prelude = s:V.import("Prelude")
+
 function! s:tempname() abort
   return tr(tempname(),'\','/')
 endfunction
@@ -19,12 +22,16 @@ endfunction
 
 function! s:quoted(str) abort
   let q = (&shellxquote == '"' ?  "'" : '"')
-  return q . str . q
+  return q . a:str . q
 endfunction
 
-function! s:make_header_args(headdata, option) abort
+function! s:make_header_args(settings, option) abort
+  if !has_key(a:settings, "headers")
+    return ""
+  endif
+  let headers = a:settings.headers
   let args = ''
-  for [key, value] in items(a:headdata)
+  for [key, value] in items(headers)
     if s:Prelude.is_windows()
       let value = substitute(value, '"', '"""', 'g')
     endif
@@ -33,9 +40,9 @@ function! s:make_header_args(headdata, option) abort
   return args
 endfunction
 
-function! s:add_option(setting, opt, prefix) abort
-  if has(a:settings, opt)
-    return " " . prefix . " " . a:settings[opt]
+function! s:add_option(settings, opt, prefix) abort
+  if has_key(a:settings, a:opt)
+    return " " . prefix . " " . a:settings[a:opt]
   endif
   return ""
 endfunction
@@ -56,7 +63,7 @@ function! s:auth_option(settings) abort
   return ' --' . method . ' --user ' . s:quoted(auth)
 endfunction
 
-function! s:make_command(url, setting) abort
+function! s:make_command(url, settings) abort
   let command = s:base_command()
 
   " output files
@@ -85,7 +92,7 @@ function! s:make_command(url, setting) abort
   let command .= s:add_option(a:settings, 'maxRedirect', '--max-redirs')
   let command .= s:add_option(a:settings, 'timeout', '--max-time')
   let command .= s:add_option(a:settings, 'retry', '--retry')
-  let command .= s:make_header_args(a:settings.headers, '-H')
+  let command .= s:make_header_args(a:settings, '-H')
   let command .= s:auth_option(a:settings)
 
   let command .= ' ' . s:quoted(a:url)
@@ -102,9 +109,9 @@ function! s:read_header(headerfile) abort
   return split(get(header_chunks, -1, ''), "\r\n")
 endfunction
 
-function! s:make_response(setting) abort
-  let header = s:read_header(a:setting._file.header)
-  let content = s:readfile(a:setting._file.body)
+function! s:make_response(settings) abort
+  let header = s:read_header(a:settings._file.header)
+  let content = s:readfile(a:settings._file.body)
 
   for file in values(settings._file)
     if filereadable(file)
@@ -135,6 +142,8 @@ function! s:make_response(setting) abort
 endfunction
 
 function! curl#get(url, ...) abort
+  let command = s:make_command(a:url, {})
+  echo command
   " TODO: implement
 endfunction
 
