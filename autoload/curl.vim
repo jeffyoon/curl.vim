@@ -64,6 +64,50 @@ function! s:auth_option(settings) abort
   return ' --' . method . ' --user ' . s:quoted(auth)
 endfunction
 
+function! s:postdata(data) abort
+  if s:Prelude.is_dict(a:data)
+    return [s:encodeURI(a:data)]
+  elseif s:Prelude.is_list(a:data)
+    return a:data
+  else
+    return split(a:data, "\n")
+  endif
+endfunction
+
+function! s:encodeURI(items) abort
+  let ret = ''
+  if s:Prelude.is_dict(a:items)
+    for key in sort(keys(a:items))
+      if strlen(ret)
+        let ret .= "&"
+      endif
+      let ret .= key . "=" . s:encodeURI(a:items[key])
+    endfor
+  elseif s:Prelude.is_list(a:items)
+    for item in sort(a:items)
+      if strlen(ret)
+        let ret .= "&"
+      endif
+      let ret .= item
+    endfor
+  else
+    let ret = s:escape(a:items)
+  endif
+  return ret
+endfunction
+
+function! s:escape(str) abort
+  let result = ''
+  for i in range(len(a:str))
+    if a:str[i] =~# '^[a-zA-Z0-9_.~-]$'
+      let result .= a:str[i]
+    else
+      let result .= printf("%%%02X", char2nr(a:str[i]))
+    endif
+  endfor
+  return result
+endfunction
+
 function! s:make_command(url, settings) abort
   let command = s:base_command()
 
@@ -76,7 +120,7 @@ function! s:make_command(url, settings) abort
   let command .= ' --output ' . s:quoted(a:settings._file.body)
   if has_key(a:settings, 'data')
     let a:settings._file.post = s:tempname()
-    call writefile([s:json.encode(a:settings.data), ], a:settings._file.post, 'b')
+    call writefile(s:postdata(a:settings.data), a:settings._file.post, 'b')
     let command .= ' --data-binary @' . s:quoted(a:settings._file.post)
   endif
   if has_key(a:settings, 'gzipDecompress') && a:settings.gzipDecompress
