@@ -100,11 +100,14 @@ function! s:make_command(url, settings) abort
 endfunction
 
 function! s:readfile(file) abort
+  if !filereadable(a:file)
+    throw "curl.vim: File does not exists: " . a:file
+  endif
   return join(readfile(a:file, 'b'), "\n")
 endfunction
 
 function! s:read_header(headerfile) abort
-  let headerstr = s:readfile(a:settings._file.header)
+  let headerstr = s:readfile(a:headerfile)
   let header_chunks = split(headerstr, "\r\n\r\n")
   return split(get(header_chunks, -1, ''), "\r\n")
 endfunction
@@ -113,7 +116,7 @@ function! s:make_response(settings) abort
   let header = s:read_header(a:settings._file.header)
   let content = s:readfile(a:settings._file.body)
 
-  for file in values(settings._file)
+  for file in values(a:settings._file)
     if filereadable(file)
       call delete(file)
     endif
@@ -141,14 +144,31 @@ function! s:make_response(settings) abort
   return response
 endfunction
 
-function! curl#get(url, ...) abort
-  let command = s:make_command(a:url, {})
-  echo command
-  " TODO: implement
+function! curl#request(url, settings)abort
+  let command = s:make_command(a:url, a:settings)
+  call vimproc#system(command)
+  return s:make_response(a:settings)
+endfunction
+
+function! curl#get(url, ...)abort
+  if len(a:000) > 0 && type(a:1) == type({})
+    let settings = a:1
+  else
+    let settings = {}
+  endif
+  let settings.method = "GET"
+  return curl#request(a:url, settings)
 endfunction
 
 function! curl#post(url, data, ...) abort
-  " TODO: implement
+  if len(a:000) > 0 && type(a:1) == type({})
+    let settings = a:1
+  else
+    let settings = {}
+  endif
+  let settings.method = "POST"
+  let settings.data = a:data
+  return curl#request(a:url, settings)
 endfunction
 
 let &cpo = s:save_cpo
