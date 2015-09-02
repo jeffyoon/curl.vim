@@ -1,5 +1,16 @@
 # curl.vim
-A [vimproc](https://github.com/Shougo/vimproc.vim)-based async HTTP client for vim/vimscript
+An async HTTP client for vim/vimscript
+
+## Usage
+
+```vim
+function! Echo(res) abort
+  echo a:res
+endfunction
+
+let callback = function("Echo")
+call curl#async#get("http://httpbin.org/ip", callback)
+```
 
 ## TODOs
 - [x] implement sync HTTP client (equivalent to the curl part of Vital.Web.HTTP)
