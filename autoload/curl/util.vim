@@ -28,9 +28,14 @@ endfunction
 
 function! s:make_header_args(settings, option) abort
   if !has_key(a:settings, "headers")
-    return ""
+    let a:settings.headers = {}
   endif
   let headers = a:settings.headers
+  " Complete header
+  if has_key(a:settings, 'contentType')
+    let headers['Content-Type'] = a:settings.contentType
+  endif
+  " Convert to args
   let args = ''
   for [key, value] in items(headers)
     if s:Prelude.is_windows()
@@ -74,6 +79,21 @@ function! s:postdata(data) abort
   endif
 endfunction
 
+function! s:make_url(url, settings) abort
+  if has_key(a:settings, 'param')
+    let param = a:settings.param
+    if s:Prelude.is_dict(param)
+      let getdatastr = s:http.encodeURI(param)
+    else
+      let getdatastr = param
+    endif
+    if strlen(getdatastr)
+      return a:url .= '?' . getdatastr
+    endif
+  endif
+  return a:url
+endfunction
+
 function! curl#util#make_command(url, settings) abort
   let command = s:base_command()
 
@@ -106,7 +126,8 @@ function! curl#util#make_command(url, settings) abort
   let command .= s:make_header_args(a:settings, '-H')
   let command .= s:auth_option(a:settings)
 
-  let command .= ' ' . s:quoted(a:url)
+  " add URL
+  let command .= ' ' . s:quoted(s:make_url(a:url, a:settings))
   return command
 endfunction
 
